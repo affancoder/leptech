@@ -256,7 +256,7 @@ const HeroVideoSlider: React.FC = () => {
       </motion.div>
 
       {/* Navigation Arrows */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-between px-4 md:px-8 pointer-events-none">
+      <div className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-4 pointer-events-none">
         <button
           onClick={(e) => {
             e.stopPropagation();
