@@ -19,33 +19,50 @@ const HeroVideoSlider: React.FC = () => {
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isHovering, setIsHovering] = useState<boolean>(false);
+  const [readySlides, setReadySlides] = useState<Set<number>>(new Set([0]));
 
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  // Preload logic for smoother transitions
-  useEffect(() => {
-    // Preload current and next video metadata/data
-    const currentVideo = videoRefs.current[currentSlide];
-    const nextIndex = (currentSlide + 1) % videos.length;
-    const nextVideo = videoRefs.current[nextIndex];
-
-    if (currentVideo) {
-      currentVideo.preload = "auto";
-      currentVideo.load();
-      currentVideo.play().catch(() => {});
-    }
-
-    if (nextVideo) {
-      nextVideo.preload = "metadata";
-      nextVideo.load();
-    }
-  }, [currentSlide]);
-
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-
   const cursorX = useSpring(mouseX, { damping: 25, stiffness: 150 });
   const cursorY = useSpring(mouseY, { damping: 25, stiffness: 150 });
+
+  // ✅ On mount: eagerly preload ALL videos so mobile has them ready
+  useEffect(() => {
+    videoRefs.current.forEach((vid, index) => {
+      if (!vid) return;
+      vid.preload = "auto";
+      vid.load();
+      // Mark as ready once it can play through
+      const onCanPlay = () => {
+        setReadySlides((prev) => new Set([...prev, index]));
+      };
+      vid.addEventListener("canplaythrough", onCanPlay, { once: true });
+    });
+  }, []);
+
+  // ✅ When slide changes, play current video and pause others
+  useEffect(() => {
+    videoRefs.current.forEach((vid, index) => {
+      if (!vid) return;
+      if (index === currentSlide) {
+        // Reset to start for clean transition
+        vid.currentTime = 0;
+        // Use a small delay to let opacity transition start first
+        const playPromise = vid.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Autoplay blocked — try muted play as fallback
+            vid.muted = true;
+            vid.play().catch(() => {});
+          });
+        }
+      } else {
+        vid.pause();
+      }
+    });
+  }, [currentSlide]);
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % videos.length);
@@ -62,9 +79,6 @@ const HeroVideoSlider: React.FC = () => {
     return () => clearInterval(timer);
   }, [nextSlide, isPaused, isPlaying]);
 
-  // Single video switching (mobile safe) - Removed in favor of multi-video optimization
-  // useEffect(() => { ... }, [currentSlide]);
-
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     mouseX.set(e.clientX - rect.left);
@@ -74,7 +88,6 @@ const HeroVideoSlider: React.FC = () => {
   const togglePlayPause = () => {
     const currentVideo = videoRefs.current[currentSlide];
     if (!currentVideo) return;
-
     if (isPlaying) {
       currentVideo.pause();
     } else {
@@ -125,14 +138,15 @@ const HeroVideoSlider: React.FC = () => {
             muted
             loop
             playsInline
-            preload={index === 0 ? "auto" : "metadata"}
+            // ✅ Preload ALL videos as "auto", not just the first
+            preload="auto"
+            // ✅ Keep all videos mounted in DOM but hidden via opacity
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
               index === currentSlide ? "opacity-100" : "opacity-0"
             }`}
             style={{ zIndex: index === currentSlide ? 1 : 0 }}
           />
         ))}
-        {/* Fallback dark overlay while loading */}
         <div className="absolute inset-0 bg-black/20 pointer-events-none" />
       </div>
 
@@ -152,13 +166,10 @@ const HeroVideoSlider: React.FC = () => {
             <h1 className="text-3xl md:text-4xl font-semibold mb-2">
               BOTTLE THE MOMENT
             </h1>
-
             <h2 className="text-xl md:text-2xl mb-6 uppercase font-light">
               BESPOKE SCENTS FOR UNFORGETTABLE MEMORIES
             </h2>
-
             <div className="hidden md:block h-[2px] w-full bg-white mb-4" />
-
             <p className="text-sm text-white/70">
               Expertly crafted fragrances that bring your stories to life.
             </p>
@@ -166,15 +177,11 @@ const HeroVideoSlider: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      {/* 🔥 BEGIN THE JOURNEY (RESTORED) */}
+      {/* Begin The Journey */}
       <motion.div
         initial={{ opacity: 0.3 }}
         animate={{ opacity: [0.3, 1, 0.3] }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
+        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         className="absolute bottom-10 right-6 md:right-12 lg:right-16 z-30 text-white text-[10px] md:text-xs lg:text-sm tracking-[0.2em] uppercase whitespace-nowrap pointer-events-none opacity-80"
       >
         BEGIN THE JOURNEY &#x25CB;
@@ -183,19 +190,13 @@ const HeroVideoSlider: React.FC = () => {
       {/* Arrows */}
       <div className="absolute right-6 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-4">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            prevSlide();
-          }}
+          onClick={(e) => { e.stopPropagation(); prevSlide(); }}
           className="p-3 bg-white/10 rounded-full text-white"
         >
           ◀
         </button>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            nextSlide();
-          }}
+          onClick={(e) => { e.stopPropagation(); nextSlide(); }}
           className="p-3 bg-white/10 rounded-full text-white"
         >
           ▶
@@ -207,11 +208,8 @@ const HeroVideoSlider: React.FC = () => {
         {videos.map((_, index) => (
           <button
             key={index}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentSlide(index);
-            }}
-            className={`h-2 rounded-full ${
+            onClick={(e) => { e.stopPropagation(); setCurrentSlide(index); }}
+            className={`h-2 rounded-full transition-all duration-300 ${
               index === currentSlide ? "w-8 bg-white" : "w-2 bg-white/40"
             }`}
           />
