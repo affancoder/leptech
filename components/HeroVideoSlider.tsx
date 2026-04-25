@@ -20,7 +20,26 @@ const HeroVideoSlider: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isHovering, setIsHovering] = useState<boolean>(false);
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+  // Preload logic for smoother transitions
+  useEffect(() => {
+    // Preload current and next video metadata/data
+    const currentVideo = videoRefs.current[currentSlide];
+    const nextIndex = (currentSlide + 1) % videos.length;
+    const nextVideo = videoRefs.current[nextIndex];
+
+    if (currentVideo) {
+      currentVideo.preload = "auto";
+      currentVideo.load();
+      currentVideo.play().catch(() => {});
+    }
+
+    if (nextVideo) {
+      nextVideo.preload = "metadata";
+      nextVideo.load();
+    }
+  }, [currentSlide]);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -43,22 +62,8 @@ const HeroVideoSlider: React.FC = () => {
     return () => clearInterval(timer);
   }, [nextSlide, isPaused, isPlaying]);
 
-  // Single video switching (mobile safe)
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.src = videos[currentSlide];
-    video.load();
-
-    video.muted = true;
-    video.playsInline = true;
-
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {});
-    }
-  }, [currentSlide]);
+  // Single video switching (mobile safe) - Removed in favor of multi-video optimization
+  // useEffect(() => { ... }, [currentSlide]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -67,13 +72,13 @@ const HeroVideoSlider: React.FC = () => {
   };
 
   const togglePlayPause = () => {
-    const video = videoRef.current;
-    if (!video) return;
+    const currentVideo = videoRefs.current[currentSlide];
+    if (!currentVideo) return;
 
     if (isPlaying) {
-      video.pause();
+      currentVideo.pause();
     } else {
-      video.play().catch(() => {});
+      currentVideo.play().catch(() => {});
     }
     setIsPlaying(!isPlaying);
   };
@@ -108,17 +113,27 @@ const HeroVideoSlider: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Video */}
-      <div className="absolute inset-0 z-0">
-        <video
-          ref={videoRef}
-          muted
-          loop
-          playsInline
-          preload="auto"
-          poster="/images/fallback.jpg"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+      {/* Background Videos */}
+      <div className="absolute inset-0 z-0 bg-black">
+        {videos.map((video, index) => (
+          <video
+            key={video}
+            ref={(el) => {
+              videoRefs.current[index] = el;
+            }}
+            src={video}
+            muted
+            loop
+            playsInline
+            preload={index === 0 ? "auto" : "metadata"}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+              index === currentSlide ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ zIndex: index === currentSlide ? 1 : 0 }}
+          />
+        ))}
+        {/* Fallback dark overlay while loading */}
+        <div className="absolute inset-0 bg-black/20 pointer-events-none" />
       </div>
 
       {/* Overlay */}

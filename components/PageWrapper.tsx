@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CinematicLoader from './CinematicLoader';
+import ScrollToTopButton from './ScrollToTopButton';
 
 interface PageWrapperProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ const PageWrapper: React.FC<PageWrapperProps> = ({ children }) => {
         className="w-full"
       >
         {children}
+        <ScrollToTopButton />
       </motion.div>
     </>
   );
