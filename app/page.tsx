@@ -7,19 +7,22 @@ import FAQSection from "@/components/FAQSection";
 import UniquelyBottled from "@/components/UniquelyBottled";
 import ChooseYourWorld from "@/components/ChooseYourWorld";
 import HowItWorks from "@/components/HowItWorks";
+import PageWrapper from "@/components/PageWrapper";
 
 export default function Home() {
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-between bg-white">
-      <Navbar />
-      <HeroVideoSlider />
-      <ImageDisplay />
-      <HowItWorks />
-      <ChooseYourWorld />
-      <UniquelyBottled />
-      <QuoteSection />
-      <FAQSection />
-      <Footer />
-    </main>
+    <PageWrapper>
+      <main className="relative flex min-h-screen flex-col items-center justify-between bg-white">
+        <Navbar />
+        <HeroVideoSlider />
+        <ImageDisplay />
+        <HowItWorks />
+        <ChooseYourWorld />
+        <UniquelyBottled />
+        <QuoteSection />
+        <FAQSection />
+        <Footer />
+      </main>
+    </PageWrapper>
   );
 }

@@ -171,7 +171,10 @@ const HeroVideoSlider: React.FC = () => {
       </AnimatePresence>
 
       {/* Background Videos */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 bg-black">
+        {/* Dark Fallback Overlay for when video is loading */}
+        <div className="absolute inset-0 bg-black z-[1]" />
+        
         {videos.map((video, index) => (
           <video
             key={video}
@@ -179,14 +182,15 @@ const HeroVideoSlider: React.FC = () => {
               videoRefs.current[index] = el;
             }}
             src={video}
-            autoPlay
+            autoPlay={index === currentSlide}
             muted
             loop
             playsInline
+            preload={index === 0 ? "auto" : "metadata"}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
               index === currentSlide ? "opacity-100" : "opacity-0"
             }`}
-            style={{ zIndex: index === currentSlide ? 1 : 0 }}
+            style={{ zIndex: index === currentSlide ? 2 : 0 }}
           />
         ))}
       </div>
